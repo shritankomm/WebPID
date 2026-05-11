@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WebPID</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Inter:wght@300;400;500&display=swap');
+  :root {
+    --bg:#0a0a0a;--surface:#111111;--surface2:#181818;--border:#222222;
+    --green:#00e676;--green-dim:#00e67618;--green-mid:#00e67640;
+    --text:#e8e8e8;--text-dim:#555555;--text-mid:#888888;
+    --kp:#00e676;--ki:#69f0ae;--kd:#b9f6ca;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;height:100vh;display:flex;flex-direction:column;overflow:hidden;}
+  header{display:flex;align-items:center;justify-content:space-between;padding:12px 24px;border-bottom:1px solid var(--border);flex-shrink:0;}
+  .logo{font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:700;letter-spacing:.15em;color:var(--green);}
+  .logo span{color:var(--text-dim);font-weight:300;}
+  .status-pill{display:flex;align-items:center;gap:7px;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-dim);letter-spacing:.1em;}
+  .dot{width:6px;height:6px;border-radius:50%;background:var(--text-dim);transition:all .3s;}
+  .dot.running{background:var(--green);box-shadow:0 0 8px var(--green);animation:pulse 1.2s infinite;}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+  main{display:flex;flex:1;overflow:hidden;}
+  .panel{width:320px;flex-shrink:0;border-right:1px solid var(--border);display:flex;flex-direction:column;padding:22px;gap:20px;overflow-y:auto;}
+  .section-label{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.2em;color:var(--text-dim);text-transform:uppercase;margin-bottom:12px;}
+  .slider-group{display:flex;flex-direction:column;gap:20px;}
+  .slider-row{display:flex;flex-direction:column;gap:9px;}
+  .slider-header{display:flex;align-items:center;justify-content:space-between;}
+  .slider-label{display:flex;align-items:center;gap:7px;font-family:'JetBrains Mono',monospace;font-size:13px;}
+  .slider-label .key{font-size:15px;font-weight:700;}
+  .slider-label .name{color:var(--text-dim);font-weight:300;font-size:10px;letter-spacing:.05em;}
+  .info-btn{background:none;border:1px solid var(--border);color:var(--text-dim);width:16px;height:16px;border-radius:50%;font-size:9px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .2s;font-family:'JetBrains Mono',monospace;flex-shrink:0;}
+  .info-btn:hover{border-color:var(--green);color:var(--green);}
+  .slider-value{font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:500;min-width:38px;text-align:right;}
+  input[type=range]{-webkit-appearance:none;width:100%;height:3px;border-radius:2px;outline:none;cursor:pointer;}
+  input[type=range].kp{background:linear-gradient(to right,var(--kp) 0%,var(--kp) var(--val,20%),#2a2a2a var(--val,20%),#2a2a2a 100%);}
+  input[type=range].ki{background:linear-gradient(to right,var(--ki) 0%,var(--ki) var(--val,0%),#2a2a2a var(--val,0%),#2a2a2a 100%);}
+  input[type=range].kd{background:linear-gradient(to right,var(--kd) 0%,var(--kd) var(--val,0%),#2a2a2a var(--val,0%),#2a2a2a 100%);}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:15px;height:15px;border-radius:50%;background:var(--text);border:2px solid var(--bg);box-shadow:0 0 0 1px #3a3a3a;transition:transform .15s;}
+  input[type=range]::-webkit-slider-thumb:hover{transform:scale(1.25);}
+  .divider{height:1px;background:var(--border);flex-shrink:0;}
+  .car-size{display:flex;gap:8px;}
+  .size-btn{flex:1;padding:9px 6px;background:var(--surface2);border:1px solid var(--border);color:var(--text-mid);font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.06em;cursor:pointer;border-radius:3px;transition:all .2s;text-align:center;}
+  .size-btn:hover{border-color:var(--green-mid);color:var(--text);}
+  .size-btn.active{border-color:var(--green);color:var(--green);background:var(--green-dim);}
+  .btn-group{display:flex;gap:8px;}
+  .btn{flex:1;padding:11px;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:500;letter-spacing:.1em;cursor:pointer;border-radius:3px;transition:all .2s;border:1px solid;}
+  .btn-run{background:var(--green);border-color:var(--green);color:#000;}
+  .btn-run:hover{background:#00ff88;}
+  .btn-run.stop{background:transparent;border-color:#ff4444;color:#ff4444;}
+  .btn-run.stop:hover{background:#ff444418;}
+  .btn-reset{background:transparent;border-color:var(--border);color:var(--text-dim);}
+  .btn-reset:hover{border-color:var(--text-mid);color:var(--text);}
+  .metrics{display:flex;flex-direction:column;gap:9px;}
+  .metric-row{display:flex;justify-content:space-between;align-items:center;}
+  .metric-label{color:var(--text-dim);font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.08em;}
+  .metric-val{font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--green);}
+  .display{flex:1;display:flex;flex-direction:column;overflow:hidden;position:relative;}
+  .sim-area{flex:1;position:relative;overflow:hidden;background:#0d0d0d;}
+  #roadCanvas{position:absolute;top:0;left:0;width:100%;height:100%;}
+  .graph-strip{height:130px;flex-shrink:0;border-top:1px solid var(--border);position:relative;padding:10px 16px 6px;background:var(--surface);}
+  .graph-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;}
+  .graph-title{font-family:'JetBrains Mono',monospace;font-size:8px;letter-spacing:.18em;color:var(--text-dim);text-transform:uppercase;}
+  .legend{display:flex;gap:14px;font-family:'JetBrains Mono',monospace;font-size:8px;color:var(--text-dim);}
+  .legend-item{display:flex;align-items:center;gap:5px;}
+  .legend-line{width:16px;height:1.5px;border-radius:1px;}
+  #graph{width:100%;display:block;}
+  .tooltip{position:fixed;background:#161616;border:1px solid var(--green-mid);border-radius:5px;padding:9px 13px;font-size:10px;color:var(--text-mid);max-width:200px;z-index:1000;display:none;line-height:1.6;box-shadow:0 8px 28px #00000090;}
+  .tooltip.visible{display:block;}
+  .tooltip strong{color:var(--green);font-family:'JetBrains Mono',monospace;font-size:9px;display:block;margin-bottom:4px;letter-spacing:.12em;}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">Web<span>PID</span></div>
+  <div class="status-pill"><div class="dot" id="statusDot"></div><span id="statusText">READY</span></div>
+</header>
+<main>
+  <div class="panel">
+    <div>
+      <div class="section-label">Gain Parameters</div>
+      <div class="slider-group">
+        <div class="slider-row">
+          <div class="slider-header">
+            <div class="slider-label">
+              <span class="key" style="color:var(--kp)">Kp</span>
+              <span class="name">Proportional</span>
+              <button class="info-btn" onclick="showTip(this,'KP','Responds to current error. Bigger error = bigger correction. Too high causes oscillation.')">?</button>
+            </div>
+            <span class="slider-value" id="kpVal" style="color:var(--kp)">1.0</span>
+          </div>
+          <input type="range" class="kp" id="kp" min="0" max="5" step="0.1" value="1.0" oninput="updateSlider(this,'kpVal')">
+        </div>
+        <div class="slider-row">
+          <div class="slider-header">
+            <div class="slider-label">
+              <span class="key" style="color:var(--ki)">Ki</span>
+              <span class="name">Integral</span>
+              <button class="info-btn" onclick="showTip(this,'KI','Accumulates error over time. Eliminates persistent offset. Too high causes repeated overshoot.')">?</button>
+            </div>
+            <span class="slider-value" id="kiVal" style="color:var(--ki)">0.0</span>
+          </div>
+          <input type="range" class="ki" id="ki" min="0" max="5" step="0.1" value="0.0" oninput="updateSlider(this,'kiVal')">
+        </div>
+        <div class="slider-row">
+          <div class="slider-header">
+            <div class="slider-label">
+              <span class="key" style="color:var(--kd)">Kd</span>
+              <span class="name">Derivative</span>
+              <button class="info-btn" onclick="showTip(this,'KD','Responds to rate of error change. Acts as a brake. Too high causes sluggish response.')">?</button>
+            </div>
+            <span class="slider-value" id="kdVal" style="color:var(--kd)">0.0</span>
+          </div>
+          <input type="range" class="kd" id="kd" min="0" max="5" step="0.1" value="0.0" oninput="updateSlider(this,'kdVal')">
+        </div>
+      </div>
+    </div>
+    <div class="divider"></div>
+    <div>
+      <div class="section-label">Car Size <button class="info-btn" style="display:inline-flex;margin-left:6px;vertical-align:middle" onclick="showTip(this,'CAR SIZE','Larger cars have more mass and require different tuning to stabilize.')">?</button></div>
+      <div class="car-size">
+        <button class="size-btn active" id="btnSmall" onclick="setSize('small')">SMALL</button>
+        <button class="size-btn" id="btnLarge" onclick="setSize('large')">LARGE</button>
+      </div>
+    </div>
+    <div class="divider"></div>
+    <div class="btn-group">
+      <button class="btn btn-run" id="btnRun" onclick="toggleRun()">RUN</button>
+      <button class="btn btn-reset" onclick="resetSim()">RESET</button>
+    </div>
+    <div class="divider"></div>
+    <div>
+      <div class="section-label">Live Metrics</div>
+      <div class="metrics">
+        <div class="metric-row"><span class="metric-label">ERROR</span><span class="metric-val" id="mError">0.00</span></div>
+        <div class="metric-row"><span class="metric-label">OUTPUT</span><span class="metric-val" id="mOutput">0.00</span></div>
+        <div class="metric-row"><span class="metric-label">OFFSET</span><span class="metric-val" id="mPos">0.00</span></div>
+        <div class="metric-row"><span class="metric-label">STABLE</span><span class="metric-val" id="mSettled">—</span></div>
+      </div>
+    </div>
+  </div>
+  <div class="display">
+    <div class="sim-area" id="simArea"><canvas id="roadCanvas"></canvas></div>
+    <div class="graph-strip">
+      <div class="graph-header">
+        <div class="graph-title">Lateral Offset vs Time</div>
+        <div class="legend">
+          <div class="legend-item"><div class="legend-line" style="background:var(--green)"></div>Setpoint</div>
+          <div class="legend-item"><div class="legend-line" style="background:#fff"></div>Actual</div>
+        </div>
+      </div>
+      <canvas id="graph"></canvas>
+    </div>
+  </div>
+</main>
+<div class="tooltip" id="tooltip"></div>
+<script>
+  let running=false,animId=null,carSize='small';
+  let offset=0,velocity=0,integral=0,prevError=0,t=0;
+  let graphData=[],settledFrames=0,travelDist=0,trail=[];
+  const DT=0.05,SETPOINT=0;
+  const sizeProps={
+    small:{mass:1.0,friction:0.18,disturbance:0.8,carW:32,carH:58},
+    large:{mass:3.0,friction:0.08,disturbance:1.6,carW:48,carH:82}
+  };
+  let roadCanvas,roadCtx,graphCanvas,graphCtx;
+
+  window.addEventListener('load',()=>{
+    roadCanvas=document.getElementById('roadCanvas');
+    graphCanvas=document.getElementById('graph');
+    resizeCanvases();
+    drawRoad();
+    window.addEventListener('resize',()=>{resizeCanvases();if(!running)drawRoad();});
+  });
+
+  function resizeCanvases(){
+    const sim=document.getElementById('simArea');
+    roadCanvas.width=sim.offsetWidth;
+    roadCanvas.height=sim.offsetHeight;
+    roadCtx=roadCanvas.getContext('2d');
+    const gs=document.querySelector('.graph-strip');
+    graphCanvas.width=gs.offsetWidth-32;
+    graphCanvas.height=72;
+    graphCtx=graphCanvas.getContext('2d');
+  }
+
+  function getParams(){
+    return{kp:parseFloat(document.getElementById('kp').value),ki:parseFloat(document.getElementById('ki').value),kd:parseFloat(document.getElementById('kd').value)};
+  }
+
+  function updateSlider(el,valId){
+    const pct=((el.value-el.min)/(el.max-el.min)*100).toFixed(1)+'%';
+    el.style.setProperty('--val',pct);
+    document.getElementById(valId).textContent=parseFloat(el.value).toFixed(1);
+  }
+
+  ['kp','ki','kd'].forEach(id=>{
+    const el=document.getElementById(id);
+    el.style.setProperty('--val',((el.value-el.min)/(el.max-el.min)*100).toFixed(1)+'%');
+  });
+
+  function setSize(s){
+    carSize=s;
+    document.getElementById('btnSmall').classList.toggle('active',s==='small');
+    document.getElementById('btnLarge').classList.toggle('active',s==='large');
+    if(!running)resetSim();
+  }
+
+  function toggleRun(){running?stopSim():startSim();}
+
+  function startSim(){
+    running=true;
+    offset=(Math.random()-0.5)*100;
+    velocity=0;integral=0;prevError=offset;t=0;
+    graphData=[];settledFrames=0;travelDist=0;trail=[];
+    document.getElementById('btnRun').textContent='STOP';
+    document.getElementById('btnRun').classList.add('stop');
+    document.getElementById('statusDot').classList.add('running');
+    document.getElementById('statusText').textContent='RUNNING';
+    loop();
+  }
+
+  function stopSim(){
+    running=false;
+    if(animId)cancelAnimationFrame(animId);
+    document.getElementById('btnRun').textContent='RUN';
+    document.getElementById('btnRun').classList.remove('stop');
+    document.getElementById('statusDot').classList.remove('running');
+    document.getElementById('statusText').textContent='PAUSED';
+  }
+
+  function resetSim(){
+    stopSim();
+    offset=0;velocity=0;integral=0;prevError=0;t=0;
+    graphData=[];settledFrames=0;travelDist=0;trail=[];
+    drawRoad();drawGraph();
+    document.getElementById('mError').textContent='0.00';
+    document.getElementById('mOutput').textContent='0.00';
+    document.getElementById('mPos').textContent='0.00';
+    document.getElementById('mSettled').textContent='—';
+    document.getElementById('mSettled').style.color='var(--green)';
+    document.getElementById('statusText').textContent='READY';
+    document.getElementById('statusDot').classList.remove('running');
+  }
+
+  function loop(){
+    if(!running)return;
+    const{kp,ki,kd}=getParams();
+    const props=sizeProps[carSize];
+    const error=SETPOINT-offset;
+    integral+=error*DT;
+    const derivative=(error-prevError)/DT;
+    prevError=error;
+    const output=kp*error+ki*integral+kd*derivative;
+    const force=output/props.mass;
+    const disturbance=(Math.random()-0.5)*props.disturbance;
+    velocity+=(force+disturbance)*DT;
+    velocity*=(1-props.friction);
+    offset+=velocity*DT;
+    offset=Math.max(-160,Math.min(160,offset));
+    travelDist+=2.5;t+=DT;
+    trail.push({offset,travel:travelDist});
+    if(trail.length>500)trail.shift();
+    graphData.push({t,pos:offset});
+    if(graphData.length>500)graphData.shift();
+    if(Math.abs(error)<4&&Math.abs(velocity)<0.4)settledFrames++;
+    else settledFrames=0;
+    drawRoad();drawGraph();
+    document.getElementById('mError').textContent=error.toFixed(2);
+    document.getElementById('mOutput').textContent=output.toFixed(2);
+    document.getElementById('mPos').textContent=offset.toFixed(2);
+    const settled=settledFrames>50;
+    document.getElementById('mSettled').textContent=settled?'YES':'NO';
+    document.getElementById('mSettled').style.color=settled?'var(--green)':'#ff5555';
+    animId=requestAnimationFrame(loop);
+  }
+
+  function drawRoad(){
+    if(!roadCtx)return;
+    const W=roadCanvas.width,H=roadCanvas.height;
+    const ctx=roadCtx;
+    ctx.clearRect(0,0,W,H);
+    const centerX=W/2;
+    const roadW=Math.min(320,W*0.5);
+    ctx.fillStyle='#0d0d0d';ctx.fillRect(0,0,W,H);
+    ctx.fillStyle='#141414';ctx.fillRect(centerX-roadW/2,0,roadW,H);
+
+    // Road edges
+    ctx.strokeStyle='#2a2a2a';ctx.lineWidth=2;
+    ctx.beginPath();ctx.moveTo(centerX-roadW/2,0);ctx.lineTo(centerX-roadW/2,H);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(centerX+roadW/2,0);ctx.lineTo(centerX+roadW/2,H);ctx.stroke();
+
+    // Moving dashes on road
+    ctx.strokeStyle='#1e1e1e';ctx.lineWidth=1;
+    ctx.setLineDash([10,20]);ctx.lineDashOffset=-(travelDist%30);
+    [centerX-roadW*0.25,centerX+roadW*0.25].forEach(lx=>{
+      ctx.beginPath();ctx.moveTo(lx,0);ctx.lineTo(lx,H);ctx.stroke();
+    });
+    ctx.setLineDash([]);ctx.lineDashOffset=0;
+
+    // Setpoint center line
+    ctx.strokeStyle='rgba(0,230,118,0.4)';ctx.lineWidth=1.5;
+    ctx.setLineDash([18,14]);ctx.lineDashOffset=-(travelDist%32);
+    ctx.beginPath();ctx.moveTo(centerX,0);ctx.lineTo(centerX,H);ctx.stroke();
+    ctx.setLineDash([]);ctx.lineDashOffset=0;
+
+    // Car Y fixed at 70% down
+    const carY=H*0.70;
+
+    // Trail
+    if(trail.length>1){
+      ctx.strokeStyle='rgba(0,230,118,0.18)';ctx.lineWidth=2;
+      ctx.beginPath();
+      let started=false;
+      trail.forEach(pt=>{
+        const travelDiff=travelDist-pt.travel;
+        const py=carY-(travelDiff*1.1);
+        const px=centerX+pt.offset;
+        if(py<-20||py>H+20)return;
+        if(!started){ctx.moveTo(px,py);started=true;}
+        else ctx.lineTo(px,py);
+      });
+      ctx.stroke();
+    }
+
+    drawCar(ctx,centerX+offset,carY,carSize);
+
+    ctx.fillStyle='rgba(0,230,118,0.45)';
+    ctx.font='8px JetBrains Mono';
+    ctx.fillText('SETPOINT',centerX+8,18);
+  }
+
+  function drawCar(ctx,x,y,size){
+    const props=sizeProps[size];
+    const w=props.carW,h=props.carH;
+    ctx.save();ctx.translate(x,y);
+    ctx.shadowColor='rgba(0,0,0,0.7)';ctx.shadowBlur=16;ctx.shadowOffsetY=5;
+    // Body
+    ctx.fillStyle='#1c1c1c';
+    ctx.beginPath();ctx.roundRect(-w/2,-h/2,w,h,5);ctx.fill();
+    ctx.shadowBlur=0;ctx.shadowOffsetY=0;
+    ctx.strokeStyle='#3a3a3a';ctx.lineWidth=1;
+    ctx.beginPath();ctx.roundRect(-w/2,-h/2,w,h,5);ctx.stroke();
+    // Cabin
+    const cw=w*0.68,ch=h*0.36,cy2=-h*0.04;
+    ctx.fillStyle='#131313';
+    ctx.beginPath();ctx.roundRect(-cw/2,cy2-ch/2,cw,ch,3);ctx.fill();
+    // Windshields
+    const wsW=cw*0.78,wsH=ch*0.34;
+    ctx.fillStyle='rgba(0,230,118,0.07)';ctx.strokeStyle='rgba(0,230,118,0.13)';ctx.lineWidth=0.5;
+    ctx.beginPath();ctx.roundRect(-wsW/2,cy2-ch/2+4,wsW,wsH,2);ctx.fill();ctx.stroke();
+    ctx.beginPath();ctx.roundRect(-wsW/2,cy2+ch/2-wsH-4,wsW,wsH,2);ctx.fill();ctx.stroke();
+    // Headlights
+    ctx.fillStyle='rgba(255,255,180,0.75)';
+    ctx.beginPath();ctx.ellipse(-w/2+6,-h/2+6,4,2.5,0,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.ellipse(w/2-6,-h/2+6,4,2.5,0,0,Math.PI*2);ctx.fill();
+    // Taillights
+    ctx.fillStyle='rgba(255,50,50,0.75)';
+    ctx.beginPath();ctx.ellipse(-w/2+6,h/2-6,4,2.5,0,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.ellipse(w/2-6,h/2-6,4,2.5,0,0,Math.PI*2);ctx.fill();
+    // Wheels
+    const ww=5,wh=12,wyOff=h*0.27;
+    ctx.fillStyle='#0a0a0a';ctx.strokeStyle='#444';ctx.lineWidth=0.8;
+    [[-w/2-1,-wyOff-wh/2],[w/2-ww+1,-wyOff-wh/2],[-w/2-1,wyOff-wh/2],[w/2-ww+1,wyOff-wh/2]].forEach(([wx,wy])=>{
+      ctx.beginPath();ctx.roundRect(wx,wy,ww,wh,1.5);ctx.fill();ctx.stroke();
+    });
+    // Green accent
+    ctx.fillStyle='rgba(0,230,118,0.1)';
+    ctx.beginPath();ctx.roundRect(-w/2+3,-h/2+3,w-6,3,1);ctx.fill();
+    ctx.restore();
+  }
+
+  function drawGraph(){
+    if(!graphCtx)return;
+    const ctx=graphCtx,W=graphCanvas.width,H=graphCanvas.height;
+    ctx.clearRect(0,0,W,H);
+    ctx.strokeStyle='#1a1a1a';ctx.lineWidth=1;
+    for(let i=0;i<=3;i++){const y=H*i/3;ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}
+    const midY=H/2;
+    ctx.strokeStyle='rgba(0,230,118,0.35)';ctx.lineWidth=1;ctx.setLineDash([5,4]);
+    ctx.beginPath();ctx.moveTo(0,midY);ctx.lineTo(W,midY);ctx.stroke();
+    ctx.setLineDash([]);
+    if(graphData.length<2)return;
+    ctx.strokeStyle='rgba(255,255,255,0.85)';ctx.lineWidth=1.2;ctx.beginPath();
+    graphData.forEach((d,i)=>{
+      const x=(i/(graphData.length-1))*W;
+      const y=midY-(d.pos/160)*(H/2)*0.88;
+      i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+    });
+    ctx.stroke();
+  }
+
+  let tipTimeout;
+  function showTip(btn,title,text){
+    const tip=document.getElementById('tooltip');
+    tip.innerHTML=`<strong>${title}</strong>${text}`;
+    const rect=btn.getBoundingClientRect();
+    tip.style.left=(rect.right+10)+'px';tip.style.top=(rect.top-8)+'px';
+    tip.classList.add('visible');
+    clearTimeout(tipTimeout);tipTimeout=setTimeout(()=>tip.classList.remove('visible'),3500);
+  }
+  document.addEventListener('click',e=>{if(!e.target.classList.contains('info-btn'))document.getElementById('tooltip').classList.remove('visible');});
+</script>
+</body>
+</html>
